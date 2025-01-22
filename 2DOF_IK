@@ -1,0 +1,89 @@
+import math
+import machine
+from machine import I2C, Pin
+import ssd1306
+import servo
+import time
+
+# Initialize I2C and OLED display
+i2c = I2C(scl=Pin(23), sda=Pin(22))
+# You might get a deprecation warning - it can be ignored
+display = ssd1306.SSD1306_I2C(128, 64, i2c)
+
+# Initialize MG90S servos
+servo1 = servo.Servo(0)  # GPIO for servo 1
+servo2 = servo.Servo(1)  # GPIO for servo 2
+
+# Initialize LED on GPIO pin 2
+led = Pin(2, Pin.OUT)  # Change GPIO number as needed
+led.value(0)  # Ensure LED is off initially
+
+# Arm segment lengths (adjust these based on your robotic arm dimensions)
+l1 = 80.0  # Length of the first arm segment in mm
+l2 = 80.0  # Length of the second arm segment in mm
+
+def inverse_kinematics(x, y):
+    """
+    Calculate joint angles based on desired end-effector position (x, y)
+    using a 2-link planar manipulator inverse kinematics formula.
+    """
+    # Calculate angle2 using the cosine law
+    cos_angle2 = (x**2 + y**2 - l1**2 - l2**2) / (2 * l1 * l2)
+    if cos_angle2 < -1 or cos_angle2 > 1:
+        raise ValueError("Target position is out of reach")
+
+    sin_angle2 = math.sqrt(1 - cos_angle2**2)
+    angle2 = math.atan2(sin_angle2, cos_angle2)
+
+    # Calculate angle1
+    k1 = l1 + l2 * cos_angle2
+    k2 = l2 * sin_angle2
+    angle1 = math.atan2(y, x) - math.atan2(k2, k1)
+
+    # Convert from radians to degrees
+    angle1 = math.degrees(angle1)
+    angle2 = math.degrees(angle2)
+
+    return angle1, angle2
+
+def move_arm_to(x, y):
+    """
+    Move the robotic arm to the specified (x, y) position using inverse kinematics.
+    Updates the OLED display and moves the servos to the calculated angles.
+    """
+    try:
+        angle1, angle2 = inverse_kinematics(x, y)
+
+        # Ensure the angles stay within the servo's range (0 to 180 degrees)
+        angle1 = max(0, min(angle1, 180))
+        angle2 = max(0, min(angle2, 180))
+
+        # Move the servos
+        servo1.write(int(angle1))
+        servo2.write(int(angle2))
+
+        # Display movement details on OLED
+        display.fill(0)
+        display.text('Moving to:', 0, 0, 1)
+        display.text(f'X: {x}, Y: {y}', 0, 10, 1)
+        display.text(f'Ang1: {int(angle1)}', 0, 20, 1)
+        display.text(f'Ang2: {int(angle2)}', 0, 30, 1)
+        display.show()
+
+        time.sleep(2)  # Allow time for movement
+
+
+    except ValueError as e:
+        display.fill(0)
+        display.text("Out of reach!", 0, 0, 1)
+        display.show()
+        print("Error:", e)
+
+# Example usage - move the arm to a test position
+move_arm_to(-46, 120)
+
+# Draw a rectangle and greeting message on OLED
+display.rect(10, 10, 60, 50, 1)
+display.text('Good Morning', 0, 50, 1)
+display.show()
+
