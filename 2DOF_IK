@@ -12,11 +12,7 @@ display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
 # Initialize MG90S servos
 servo1 = servo.Servo(0)  # GPIO for servo 1
-servo2 = servo.Servo(1)  # GPIO for servo 2
-
-# Initialize LED on GPIO pin 2
-led = Pin(2, Pin.OUT)  # Change GPIO number as needed
-led.value(0)  # Ensure LED is off initially
+servo2 = servo.Servo(2)  # GPIO for servo 2
 
 # Arm segment lengths (adjust these based on your robotic arm dimensions)
 l1 = 80.0  # Length of the first arm segment in mm
@@ -78,9 +74,29 @@ def move_arm_to(x, y):
         display.text("Out of reach!", 0, 0, 1)
         display.show()
         print("Error:", e)
+        
+def move_arm_to_angle(theta1, theta2):
+    """
+    ...
+    """
+    
+
+    # Move the servos
+    servo1.write(int(theta1))
+    servo2.write(int(theta2))
+
+    time.sleep(2)  # Allow time for movement
+
 
 # Example usage - move the arm to a test position
-move_arm_to(-46, 120)
+# move_arm_to(-46, 120)
+# move_arm_to_angle(45,-30)
+move_arm_to_angle(90,0)
+move_arm_to_angle(45,-30)
+#move_arm_to_angle(-40,80)
+
+
+
 
 # Draw a rectangle and greeting message on OLED
 display.rect(10, 10, 60, 50, 1)
